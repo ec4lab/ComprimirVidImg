@@ -1,24 +1,29 @@
 # Comprimir Videos e Imágenes
 
-El propósito de este programa es comprimir recursivamente los archivos de video e imagenes de una carpeta, para almacenaje a largo plazo. Reduciendo todo lo posible el tamaño sin sacrificar demasiada calidad.
+El propósito de este programa es comprimir recursivamente los archivos de video e imágenes de una carpeta, para almacenaje a largo plazo. Reduciendo todo lo posible el tamaño sin sacrificar demasiada calidad.
 
 Todas las imágenes serán convertidas a JPG y los videos a MP4.
 
-Luego de los chequeos de conversión, se eliminan los archivos originales.
-
-La metadata de los archivos, especialmente la fecha de captura/creación y la geolocalización, será conservada. Cuando la imagen no disponga de geolocalización, se grabará un punto arbitrario en el atlántico sur, esto es útil en la función `Mapa` de la aplicación `Memories`de NextCloud.
+Luego de los chequeos de conversión, se eliminan los archivos originales. (configurable)
 
 ## Instalación
 
-No requiere librerías adicionales, solo tener instalado en el sistema `ffmpeg` y `exiftool`
+```bash
+gitclone https://github.com/ec4lab/ComprimirVidImg.git
+```
+
+No requiere `venv` ni librerías adicionales, solo tener instalado en el sistema `ffmpeg` y `exiftool`
+
+en **Ubuntu**
 
 ```bash
-#En Ubuntu
 sudo apt install ffmpeg
 sudo apt install libimage-exiftool-perl
 ```
 
 En **windows** ver como instalar [ffmpeg](https://github.com/ec4lab/windows#instalar-ffmpeg-en-windows-11) y [exiftool](https://github.com/ec4lab/windows#instalar-exiftool-en-windows-11).
+
+## Configuración
 
 Antes de ejecutar [procesar_vids.py](procesar_vids.py)
 
@@ -29,24 +34,60 @@ ORIGEN = Path("Origen")
 DESTINO = Path("Destino")
 ```
 
-Es posible ajustar las calidades de salida con:
+Ajustar las calidades de salida con:
 
 ```python
 ## Calidades de conversión
-Q_VIDEO = "25" # Calidad constante: 0 (sin pérdida) a 51 (muy comprimido), recomendado 24 - 25
+Q_VIDEO = "25" # CRF 0 (sin pérdida) a 51 (muy comprimido), recomendado 24 - 25
+P_VIDEO = "slow" # Preset de compresión
 Q_IMAGEN = "3" # Calidad de imagen: 1 (mejor calidad) a 31 (peor calidad), recomendado 3
 ```
 
-También se pueden indicar archivos a ignorar o a eliminar directamente
+Indicar archivos a ignorar o a eliminar directamente
 
 ```python
 ELIMINAR = ["thumbs.db", "desktop.ini", "*.part"]
 IGNORAR = ["origen.jpg", "instrucciones.png"]
 ```
 
-## Bugs Conocidos
+Permitir el borrado de los archivos originales
 
-En windows al procesar `live photos` quedan los tags `MotionPhoto: 1` y `MotionPhotoVersion: 1` activos, y luego no permite editar metadata directamente en `Memories`
+```python
+BORRAR_ORIGINALES = False
+```
+
+>[!WARNING]
+>Se recomienda `NO` borrar archivos originales hasta estar absolutamente seguros de que el programa funciona satisfactoriamente
+
+## Flujo de trabajo
+
+1. Analiza directorio de origen.
+2. Según sea video o imagen comprime sobre un `.tmp`
+3. Añade metadata
+4. Mueve a la carpeta de destino (copia estructura de directorios)  
+4.1 Si en el destino ya existe el archivo -> renombra
+5. Si eliminar originales activado  
+5.1. Si el archivo ya esta en destino y es > 0  
+5.1.1 Elimina Original
+6. Datos acumulados en `estadisticas.json`
+
+## Metadata
+
+Por cuestiones de compatibilidad solo se copia la metadata declarada explícitamente:
+
+Geolocalización: Latitud, Longitud y altura s.n.m. Cuando la imagen no disponga de geolocalización, se grabará un punto arbitrario en el atlántico sur, esto es útil en la función `Mapa` de la aplicación `Memories`de NextCloud.
+
+Fecha: se recuperan los tags: `DateTimeOriginal`,`CreateDate`,`TrackCreateDate`,`MediaCreateDate`,`ModifyDate`,`TrackModifyDate`,`MediaModifyDate`,`CreationDate`,`FileModifyDate` y también se procesan patrones comunes en el nombre de las imágenes, luego se graba la más antigua.
+
+Otra metadata:
+Se deben editar las funciones:
+
+```python
+obtener_metadata(path)
+escribir_metadata(path, metadata)
+```
+
+En este caso solo se recupera la Orientación
 
 ## Referencias
 
@@ -85,8 +126,8 @@ La lectura de parámetros y metadata la hacemos con `ffprobe`
 |minor_version|0|0|0|
 |compatible_brands|isommp42|mp42isom|mp42isom|
 |creation_time|2026-03-02T02:0:10.000000Z|-|-|
-|location|-31.2661-061.4865/|-|-|
-|location-eng|-31.2661-061.4865/|-|-|
+|location|-38.2661-069.4865/|-|-|
+|location-eng|-38.2661-069.4865/|-|-|
 |com.android.version|15|-|-|
 |com.android.manufacturer|Xiaomi|-|-|
 |com.android.model|24117RN76G|-|-|
@@ -95,7 +136,7 @@ La lectura de parámetros y metadata la hacemos con `ffprobe`
 </details>
 <br>
 
-Se puede ver que el mayor cambio se da en el Bitrate y en la resolución, haciendo que la compresión sea de mas del 80%, por otro lado tenemos que tener en cuenta que toda la metadata es removida, asi que es necsario reinsertar luego de la compresión.
+Se puede ver que el mayor cambio se da en el Bitrate y en la resolución, haciendo que la compresión sea de mas del 80%, por otro lado tenemos que tener en cuenta que toda la metadata es removida, asi que es necesario reinsertar luego de la compresión.
 
 ### Conceptos
 
@@ -155,7 +196,33 @@ Respecto a la metadata, hay algunas cosas que no son relevantes para conservar, 
 |Perfil|High|
 |Preset|slow|
 
-Metadata: Mantener todo lo que haya, sobre todo fecha de creación y geolocalización, si no existe geolocalización insertar "-41.980862 -50.932826", es un punto en el atlántico, esto es para que a la hora de ver en Memories en la parte de mapas, las que no hayan tenido GPS, estarán todas juntas en este punto y se pueden manipular directamente en la app.
+Se pueden editar los parámetros de compresión en:
+
+```python
+def comprimir_video(origen, destino):
+    filtros = []
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(origen),
+        *filtros,
+        "-c:v", "libx264", # Codec de video H.264
+        "-preset", P_VIDEO,
+        "-crf", Q_VIDEO,
+        "-profile:v", "main", #""high",
+        "-level", "4.0",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", # Codec de audio AAC
+        "-b:a", "160k", # Bitrate de audio 160 kbps
+        "-movflags", "+faststart",
+        str(destino)
+    ]
+
+    return ejecutar(cmd).returncode == 0
+```
+
+>[!NOTE]
+> Los parámetros fueron optimizados para la reproducción en `memories` de Nextcloud, algunos reproductores pueden ser un poco quisquillosos con los formato y etiquetados.
 
 ### Calidades y Formatos en las imágenes
 
@@ -268,12 +335,12 @@ En cuanto a las imágenes la metadata es mucha más, para esto debemos utilizar 
 |ThumbnailImage|(Binary data 36864 bytes, use -b option to extract)|-|-|
 |GPSAltitude|115.1 m Above Sea Level|-|-|
 |GPSDateTime|2026:3:02 01:58:38Z|-|-|
-|GPSLatitude|31 deg 15' 57.82" S|-|-|
-|GPSLongitude|61 deg 29' 11.23" W|-|-|
+|GPSLatitude|38 deg 15' 57.82" S|-|-|
+|GPSLongitude|69 deg 29' 11.23" W|-|-|
 |CircleOfConfusion|0.007 mm|-|-|
 |FOV|73.7 deg|-|-|
 |FocalLength35efl|5.2 mm (35 mm equivalent:24.0 mm)|-|-|
-|GPSPosition|31 deg 15' 57.82" S, 61 deg 29' 11.23" W|-|-|
+|GPSPosition|38 deg 15' 57.82" S, 69 deg 29' 11.23" W|-|-|
 |HyperfocalDistance|2.46 m|-|-|
 |LightValue|4.8|-|-|
 |JFIFVersion||1.01|1.01|
@@ -283,16 +350,31 @@ En cuanto a las imágenes la metadata es mucha más, para esto debemos utilizar 
 
 Si bien la compresión es muy grande en la imagen de WhatsApp, la perdida de calidad es muy notoria, no es visible en móviles pero en un monitor se nota mucho, por eso se prefieren los parámetros de la calidad HD, que conserva la resolución y la pérdida de calidad no es significativa, sigue permitiendo impresiones y ampliaciones en una calidad aceptable.
 
-La cantidad de metadata es muy completa, y hasta excesiva en el archivo original, pero tomando el mismo criterio que para los videos, se conserva la metadata completa.
+Se pueden editar los parámetros de compresión en:
 
-Algo importante, es mantener la fecha de creación, porque si no existe la fecha de captura, Memories toma por defecto la fecha de creación, y como en el momento de la conversión se esta creando un archivo nuevo, se perdería la fecha original, por eso se conserva.
+```python
+def comprimir_imagen(origen, destino):
+    filtros = []
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(origen),
+        *filtros,
+        "-q:v", Q_IMAGEN,
+        str(destino)
+    ]
+    return ejecutar(cmd).returncode == 0
+```
+
+>[!NOTE]
+> Los parámetros fueron optimizados para la reproducción en `memories` de Nextcloud, algunos reproductores pueden ser un poco quisquillosos con los formato y etiquetados.
 
 ## Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT.  
 Puedes usar, copiar, modificar y distribuir el software libremente, siempre que incluyas el aviso de derechos de autor original.
 
-Para más información, consultá el archivo [LICENSE](LICENSE).
+Para más información, consulta el archivo [LICENSE](LICENSE).
 
 ## Contacto
 

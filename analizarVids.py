@@ -101,6 +101,6 @@ def analizar_foto(ruta_imagen):
 
     return data
 
-#analizar_video("origen/2021/IMG_20211126_140127640.mp4")
-analizar_foto("origen/2021/IMG_20211126_140127640.jpg")
+#analizar_video("Destino/20240420_185422.mp4")
+analizar_foto("Origen/07.jpg")
 
