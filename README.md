@@ -183,16 +183,14 @@ Esto NO cambia la calidad objetivo,Cambia cuánto tiempo el encoder “piensa”
 
 Por ahora se trabaja con `slow`, queda en un futuro ver si vale la pena ultraslow
 
-Respecto a la metadata, hay algunas cosas que no son relevantes para conservar, pero a modo de crear un archivo para almacenaje a largo plazo, y al ser poco significativo sobre el peso final del archivo, se decide conservar el total de la metadata.
-
 |Resumen de compresión de video||
 |---|---|
 |Audio|mantener|
 |Codec|H264|
-|Resolución|1920x1080|
+|Resolución|Mantener|
 |FPS|Mantener|
 |Bitrate|No|
-|CRF|25 (se prioriza compresión sobre calidad)|
+|CRF|25 (Se prioriza compresión sobre calidad)|
 |Perfil|High|
 |Preset|slow|
 
@@ -222,7 +220,7 @@ def comprimir_video(origen, destino):
 ```
 
 >[!NOTE]
-> Los parámetros fueron optimizados para la reproducción en `memories` de Nextcloud, algunos reproductores pueden ser un poco quisquillosos con los formato y etiquetados.
+> Los parámetros fueron optimizados para la reproducción en `memories` de Nextcloud, algunos reproductores pueden ser un poco quisquillosos con los formatos y etiquetados.
 
 ### Calidades y Formatos en las imágenes
 
