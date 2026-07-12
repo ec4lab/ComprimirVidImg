@@ -16,7 +16,7 @@ DESTINO = Path("Destino")
 ## Coordenadas GPS para agregar a los archivos que no las tengan
 COORDS = ("41.980862 S","50.932826 W") # Latitud y Longitud - Atlántico Sur
 REFS = ("S","W") # Referencia de COORDS
-#"31.252668 S","61.491749 W"  # Rafaela
+
 
 ## Archivos a eliminar o ignorar sin preguntar
 ELIMINAR = ["thumbs.db", "desktop.ini", "*.part"]
